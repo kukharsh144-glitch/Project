@@ -7,7 +7,7 @@ import fs from "fs";
         api_secret: process.env.CLOUDINARY_API_SECRET, 
     });
 
-const uploadOnClouding = async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath) => {
     try {
         if (!localFilePath) return null;
         const response = await cloudinary.uploader.upload(localFilePath, { resource_type : "auto"});
@@ -21,4 +21,4 @@ const uploadOnClouding = async (localFilePath) => {
 }
 
 
-export { uploadOnClouding };
+export { uploadOnCloudinary };

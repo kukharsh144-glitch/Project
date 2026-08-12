@@ -1,12 +1,11 @@
 import mongoose , {Schema} from "mongoose";
-import bcrypt from "bcrpt";
-import { JsonWebTokenError } from "jsonwebtoken";
-import { use } from "react";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const userSchema = new Schema (
     {
         userName :{
-            type : "String",
+            type : String,
             required :true,
             unique : true,
             lowercase: true,
@@ -14,35 +13,37 @@ const userSchema = new Schema (
             index :true   // easy for searching 
         },
         fullName :{
-            type : "String",
+            type : String,
             required :true,
             lowercase: true,
             trim : true, 
         },
         email : {
-            type : "String",
+            type : String,
             required : true,
             unique : true,
             index : true,
         },
         avatar : {
-            type : "String",  // using third party app   ' cloudinary '
+            type : String,  // using third party app   ' cloudinary '
             required : true,
         },
         coverImage : {
-            type : "String",  // using third party app   ' cloudinary '
+            type : String,  // using third party app   ' cloudinary '
         },
         password:{
-            type : "String ",  // we use third party app for hashing purpoose  ' bcrypt ' 
+            type : String ,  // we use third party app for hashing purpoose  ' bcrypt ' 
             required : true,
         },
         refreshToken : {
-            type : "String",    // for using this we use third party app  ' jsonWebToken'
+            type : String,    // for using this we use third party app  ' jsonWebToken'
         },
-        watchHistory :{     // for this we the aggregation pipeline method 
-            type : Schema.type.objectId,    // that we use in the ' video.modeles.js'
-            ref :"video",
-        },
+        watchHistory :[
+            {     // for this we the aggregation pipeline method 
+                type : Schema.Types.ObjectId,    // that we use in the ' video.modeles.js'
+                ref :"Video",
+            },
+        ]
     },
     {
         timestamps : true, // it tells  ' createdAt' & ' updatedAt' 
@@ -52,14 +53,13 @@ const userSchema = new Schema (
 
 // =========================  " password " ====================== 
 
-userSchema.pre("Save", async function (next){
-    if(!this.isModified("password"))  return next();  // prevent for run on every click oon save button 
+userSchema.pre("save", async function (next){
+    if(!this.isModified("password"))  return ;  // prevent for run on every click oon save button 
 
-    this.password = bcrypt.hash(this.password, 10)  // hash the the passsword and 10 is the no. oof rounds 
-    next();
+    this.password = await bcrypt.hash(this.password, 10)  // hash the the passsword and 10 is the no. oof rounds 
 })
 
-userSchema.methods.ispasswordCorrect = async function(password){ 
+userSchema.methods.isPasswordCorrect = async function(password){ 
     return await bcrypt.compare(password, this.password); //compaire the password and return boolean value
 }
 
@@ -71,12 +71,12 @@ userSchema.methods.generateAccessToken = function (){
         {
             id: this._id,
             email : this.email,
-            userName = this.userName,
+            userName : this.userName,
             fullName : this.fullName,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
-            expireIn : process.env.ACCESS_TOKEN_EXPIRY,
+            expiresIn : process.env.ACCESS_TOKEN_EXPIRY,
         }
     )
 }
@@ -88,7 +88,7 @@ userSchema.methods.generateRefreshToken = function (){
         },
         process.env.REFRESH_TOKEN_SECRET,
         {
-            expireIn : process.env.REFRESH_TOKEN_EXPIRY,
+            expiresIn : process.env.REFRESH_TOKEN_EXPIRY,
         }
     )
 }

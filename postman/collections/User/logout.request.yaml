@@ -1,0 +1,19 @@
+$kind: http-request
+name: logout
+description: ""
+url: http://localhost:8000/api/v1/users/logout
+method: POST
+body:
+  type: json
+  content: ""
+auth:
+  type: jwt
+  credentials:
+    algorithm: HS256
+    isSecretBase64Encoded: false
+    payload: "{}"
+    addTokenTo: header
+    headerPrefix: Bearer
+    queryParamKey: token
+    header: "{}"
+order: 4113314707682571

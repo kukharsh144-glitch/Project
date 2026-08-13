@@ -3,6 +3,32 @@ import { apiError } from "../utils/apiError.js"
 import { apiResponse } from "../utils/apiResponse.js"
 import { User } from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import  JWT  from "jsonwebtoken"
+
+
+// in this i want to teell you about the difference b/w 'user' & 'User'   "user" the current user and the accessaries from the module and "User" is all the users that were in the database
+// So you need any detail from thee database
+
+const generateAccessAndRefreshToken = async(userId) => {
+    //we have to generate the access and refresh token for the login user
+    try {
+
+        const user = await User.findById(userId);
+
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        // this are the metthods that we introduce in the user module 
+
+        user.refreshToken = refreshToken;
+        // for save it in the user detail
+        await user.save({ validateBeforeSave:false })
+        // updatee the refresh token in the user in data base without taking any password again or authentication 
+
+        return { accessToken, refreshToken }
+    } catch (error) {
+        throw new apiError(500, error?.message || " Something went wrong while generating refresh & access token ")
+    }
+}
 
 const registerUser = asyncHandler(async(req , res ) => {
        // get user details from frontend  (1)
@@ -69,7 +95,7 @@ const registerUser = asyncHandler(async(req , res ) => {
 );
 
 
-const loginUser = asyncHandler( async( res, req ) => {
+const loginUser = asyncHandler( async( req, res ) => {
     // req body -> data 
     // username, email, password
     // find the user 
@@ -77,7 +103,7 @@ const loginUser = asyncHandler( async( res, req ) => {
     // access and refresh token 
     // send cookies
     
-    const { email, password, userName } = req.body;
+    const {email, password, userName } = req.body;
     console.log(email);
 
     if( !(userName || email) ){
@@ -91,20 +117,77 @@ const loginUser = asyncHandler( async( res, req ) => {
         throw new apiError( 404, "user is not found" )
     } 
 
-    const isPasswordValid = await user.isPasswordValid( password );
+    const isPasswordValid = await user.isPasswordCorrect( password );
     if ( !isPasswordValid ) {
         throw new apiError( 401, " password doesn't match " );
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken( user._id );
-    const loggedInUser = await userfindById( user._id ).select( "-password -refreshToken" )
+    const loggedInUser = await User.findById(user._id).select( "-password -refreshToken" )
+
+    const options = {
+        httpOnly : true,
+        secure : true ,
+    }
 
     return res
     .status(200)
-    .cookie("accessToken ", accessToken , option)
-    .cookie("refreshToken ", refreshToken , option)
+    .cookie("accessToken", accessToken , options)
+    .cookie("refreshToken", refreshToken , options)
     .json(new apiResponse( 200, { User : loggedInUser, accessToken, refreshToken } , "logged in successfully " ) );
 
 })
 
-export { registerUser, loginUser };
+const logoutUser = asyncHandler( async( req, res ) => {
+    // for logout  the we have to fnd the user that was done by the middleware 'auth.middleware.js'
+    await User.findByIdAndUpdate( 
+        req.user._id,
+        { $unset : { refreshToken : 1 } },  // this remove the field from the document 
+        { new : true }
+    )
+
+    const options = {
+        httpOnly : true,
+        secure : true,
+    }  // this make that the any change in that will done by the server not applicable from the frontend 
+
+    return res
+    .status( 200 )
+    .clearCookie( "accessToken", options )
+    .clearCookie( "refreshToken", options )
+    .json( new apiResponse( 200, {}, " User loggeed out successfully " ) )
+})
+
+
+const refreshAccessToken = asyncHandler( async( req, res ) => {
+    const inComingRefreshToken = req.cookie.refreshToken || req.body.refreshToken
+    if( !inComingRefreshToken ){
+        throw new apiError( 401, " unauthorized request " ) 
+    }
+    try {
+        const decodedToken = JWT.verify( inComingRefreshToken, process.env.REFRESH_TOKEN_SECRET )
+        const user = await User.findById( decodedToken?._id )
+        if( !user ){
+            throw new apiError( 401, " invalid refresh token " )
+        }
+        if(inComingRefreshToken !== user?.refreshToken){
+            throw new apiError(401, " refresh token is expired or user is not found " )
+        }
+
+        const options= {
+            httpOnly : true, 
+            secure : true,
+        }
+
+        const { accessToken, newRefreshToken} = await generateAccessAndRefreshToken( user._id )
+        return res
+        .status(200)
+        .cookie("acccesToken", accessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json( new apiResponse(200, {accessToken, refreshToken : newRefreshToken}, "acceess tokeen refreshed "))
+    } catch (error) {
+        throw new apiError(401, error?.message || " Invalid refresh token ")
+    }
+})
+
+export { registerUser, loginUser, logoutUser };

@@ -4,46 +4,47 @@ import jwt from "jsonwebtoken";
 
 const userSchema = new Schema (
     {
-        userName :{
-            type : String,
-            required :true,
-            unique : true,
+       userName: {
+            type: String,
+            required: true,
+            unique: true,
             lowercase: true,
-            trim : true,
-            index :true   // easy for searching 
+            trim: true, 
+            index: true     // used for finding easily 
         },
-        fullName :{
-            type : String,
-            required :true,
-            lowercase: true,
-            trim : true, 
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            lowecase: true,
+            trim: true, 
         },
-        email : {
-            type : String,
-            required : true,
-            unique : true,
-            index : true,
+        fullName: {
+            type: String,
+            required: true,
+            trim: true, 
+            index: true
         },
-        avatar : {
-            type : String,  // using third party app   ' cloudinary '
-            required : true,
+        avatar: {
+            type: String, // cloudinary url
+            required: true,
         },
-        coverImage : {
-            type : String,  // using third party app   ' cloudinary '
+        coverImage: {
+            type: String, // cloudinary url
         },
-        password:{
-            type : String ,  // we use third party app for hashing purpoose  ' bcrypt ' 
-            required : true,
+        watchHistory: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Video"
+            }
+        ],
+        password: {
+            type: String,
+            required: [true, 'Password is required']
         },
-        refreshToken : {
-            type : String,    // for using this we use third party app  ' jsonWebToken'
-        },
-        watchHistory :[
-            {     // for this we the aggregation pipeline method 
-                type : Schema.Types.ObjectId,    // that we use in the ' video.modeles.js'
-                ref :"Video",
-            },
-        ]
+        refreshToken: {
+            type: String
+        }
     },
     {
         timestamps : true, // it tells  ' createdAt' & ' updatedAt' 
@@ -69,7 +70,7 @@ userSchema.methods.isPasswordCorrect = async function(password){
 userSchema.methods.generateAccessToken = function (){
     return  jwt.sign (
         {
-            id: this._id,
+            _id: this._id,
             email : this.email,
             userName : this.userName,
             fullName : this.fullName,
@@ -83,7 +84,7 @@ userSchema.methods.generateAccessToken = function (){
 userSchema.methods.generateRefreshToken = function (){
     return  jwt.sign (
         {
-            id: this._id,
+            _id: this._id,
 
         },
         process.env.REFRESH_TOKEN_SECRET,

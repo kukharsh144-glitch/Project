@@ -1,0 +1,40 @@
+$kind: http-request
+description: ""
+url: http://localhost:8000/api/v1/users/register
+method: POST
+body:
+  type: formdata
+  content:
+    - type: text
+      key: userName
+      value: harsh
+      description: ""
+      disabled: false
+    - type: text
+      key: fullName
+      value: Harsh Saini
+      description: ""
+      disabled: false
+    - type: text
+      key: password
+      value: "12345678"
+      description: ""
+      disabled: false
+    - type: file
+      key: avatar
+      src:
+        - /C:/Users/HARSH/OneDrive/Desktop/WhatsApp Image 2026-07-15 at 5.16.48 PM.jpeg
+      description: ""
+      disabled: false
+    - type: file
+      key: coverImage
+      src:
+        - /D:/D/DOCUMENTS/SIGNATURE.JPG
+      description: ""
+      disabled: false
+    - type: text
+      key: email
+      value: kuk@bss.com
+      description: ""
+      disabled: false
+order: 1786614284027

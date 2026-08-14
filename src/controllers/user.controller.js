@@ -34,16 +34,15 @@ const generateAccessAndRefreshToken = async (userId) => {
 // ===================== = == REGISTER USER = == ==============
 
 const registerUser = asyncHandler(async (req, res) => {
-    // get user details from frontend  (1)
-    // validation - notemptty  (2)
-    // check is user already exixts : username, email   (3)
-    // check for imaages , check for avatar   (4)
-    // create user object - create entry in db    (5)
-    // remove password and refresh token field from the response   (6)
-    // check for user creation  (7)
-    // return res  (8) 
+    // get user details from frontend  
+    // validation - notemptty  
+    // check is user already exixts : username, email   
+    // check for imaages , check for avatar   
+    // create user object - create entry in db    
+    // remove password and refresh token field from the response   
+    // check for user creation  
+    // return res  
 
-    // ==============  1 =======================
     const { fullName, email, password, userName } = req.body;
 
     if ([fullName, email, password, userName].some((field) => field.trim() === "")) {
@@ -80,7 +79,6 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Avatar file is required")
     }
 
-    // ===== 5 ====
     const user = await User.create({
         fullName,
         avatar: avatar.url,
@@ -93,12 +91,11 @@ const registerUser = asyncHandler(async (req, res) => {
         password,
         coverImage: coverImage?.url || "",
     })
-    // ========= 6 =====
+
     const createdUser = await User.findById(user._id).select(" -password -refreshToken ")
     if (!createdUser) {
         throw new apiError(500, " something wwwent wrong while registering the user ");
     }
-
 
     return res.status(201).json(
         new apiResponse(200, createdUser, " user registered successfully ")

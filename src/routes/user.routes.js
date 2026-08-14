@@ -32,7 +32,7 @@ router.route("/login").post(loginUser)
 router.route("/logout").post(verifyJWT,  logoutUser)
 
 router.route("/changePassword").post(verifyJWT,  changeCurrentPassword)
-router.route("/currentUser").post(verifyJWT, getCurrentUser)
+router.route("/currentUser").get(verifyJWT, getCurrentUser)
 router.route("/updateAccountDetails").post(verifyJWT, updateAccountDetails)
 
 router.route("/updateAvatar").post(
@@ -44,6 +44,9 @@ router.route("/updateCoverImage").post(
     verifyJWT,
     upload.single("coverImage"), 
     updateUserCoverImage)
+
+router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
+router.route("/history").get(verifyJWT, getWatchHistory)
 
 
 export default router;

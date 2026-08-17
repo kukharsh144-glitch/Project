@@ -6,11 +6,11 @@ const playlistSchema = new Schema(
             type: String,
             required : true,
             index : true,
-            lowerCase : true,
+            lowercase : true,
         },
-        discription: {
+        description: {
             type : String,
-            lowerCase : true,
+            lowercase : true,
         },
         videos: [
             { 

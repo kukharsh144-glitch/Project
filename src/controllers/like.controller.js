@@ -1,0 +1,152 @@
+import mongoose, {isValidObjectId} from "mongoose"
+import {Like} from "../models/like.model.js"
+import {ApiError} from "../utils/ApiError.js"
+import {ApiResponse} from "../utils/ApiResponse.js"
+import {asyncHandler} from "../utils/asyncHandler.js"
+
+const toggleVideoLike = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+
+    if (!isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid videoId")
+    }
+    
+    const userId = req.user._id
+    if (!userId) {
+        throw new ApiError(401, "User must be logged in to like a video")
+    }
+
+    // try to remove an existing like first — single atomic operation,
+    // avoids a separate findOne() + deleteOne() round trip
+    const existingLike = await Like.findOneAndDelete({
+        video: videoId,
+        likedBy: userId
+    })
+
+    if (existingLike) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, { liked: false }, "Video unliked successfully"))
+    }
+
+    // no existing like was found, so create one
+    const newLike = await Like.create({ video: videoId, likedBy: userId })
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, { liked: true, like: newLike }, "Video liked successfully"))
+})
+
+const toggleCommentLike = asyncHandler(async (req, res) => {
+    const {commentId} = req.params
+    if (!isValidObjectId(commentId)) {
+        throw new ApiError(400, "Invalid commentId")
+    }   
+    
+    const userId = req.user._id
+    if(!userId) {
+        throw new ApiError(401, "User must be logged in to like a comment")
+    }
+
+    const existingLike = await Like.findOneAndDelete({
+        comment: commentId,
+        likedBy: userId
+    })  
+
+    if (existingLike) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, { liked: false }, "Comment unliked successfully"))
+    }
+
+    const newLike = await Like.create({ comment: commentId, likedBy: userId })
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, { liked: true, like: newLike }, "Comment liked successfully"))
+
+    //TODO: toggle like on comment
+
+})
+
+const toggleTweetLike = asyncHandler(async (req, res) => {
+    const {tweetId} = req.params
+    //TODO: toggle like on tweet
+    if (!isValidObjectId(tweetId)) {
+        throw new ApiError(400, "Invalid tweetId")
+    }
+    const userId = req.user._id
+    if(!userId) {
+        throw new ApiError(401, "User must be logged in to like a tweet")
+    }
+
+    const existingLike = await Like.findOneAndDelete({
+        tweet: tweetId,
+        likedBy: userId
+    })
+
+    if (existingLike) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, { liked: false }, "Tweet unliked successfully"))
+    }
+
+    const newLike = await Like.create({ tweet: tweetId, likedBy: userId })
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, { liked: true, like: newLike }, "Tweet liked successfully"))
+}
+)
+
+const getLikedVideos = asyncHandler(async (req, res) => {
+    if (!req.user?._id) {
+        throw new ApiError(401, "User must be logged in to get liked videos")
+    }
+    const userId = req.user._id
+
+    const { page = 1, limit = 10 } = req.query
+    const pageNum = Math.max(parseInt(page, 10), 1)
+    const limitNum = Math.max(parseInt(limit, 10), 1)
+    const skip = (pageNum - 1) * limitNum
+
+    const [likedVideos, totalLikedVideos] = await Promise.all([
+        Like.find({ likedBy: userId, video: { $exists: true } })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .populate({
+                path: "video",
+                select: "title thumbnail duration views createdAt owner",
+                populate: {
+                    path: "owner",
+                    select: "username email"
+                }
+            })
+            .lean(),
+        Like.countDocuments({ likedBy: userId, video: { $exists: true } })
+    ])
+
+    const totalPages = Math.ceil(totalLikedVideos / limitNum)
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            likedVideos,
+            pagination: {
+                currentPage: pageNum,
+                limit: limitNum,
+                totalLikedVideos,
+                totalPages,
+                hasNextPage: pageNum < totalPages,
+                hasPrevPage: pageNum > 1
+            }
+        }, "Liked videos retrieved successfully")
+    )
+})
+
+export {
+    toggleCommentLike,
+    toggleTweetLike,
+    toggleVideoLike,
+    getLikedVideos
+}

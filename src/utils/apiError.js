@@ -21,4 +21,5 @@ class apiError extends Error {
     }
 }
 
-export { apiError }
+const ApiError = apiError;
+export { apiError, ApiError }

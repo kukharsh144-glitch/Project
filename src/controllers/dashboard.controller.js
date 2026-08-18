@@ -2,14 +2,14 @@ import mongoose from "mongoose"
 import {Video} from "../models/video.model.js"
 import {Subscription} from "../models/subscription.model.js"
 import {Like} from "../models/like.model.js"
-import {ApiError} from "../utils/ApiError.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
+import {apiError } from "../utils/apiError.js"
+import { apiResponse} from "../utils/apiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
 const getChannelStats = asyncHandler(async (req, res) => {
     const channelId = req.user?._id
     if (!channelId) {
-        throw new ApiError(401, "User must be logged in to view channel stats")
+        throw new apiError(401, "User must be logged in to view channel stats")
     }
 
     const videoStats = await Video.aggregate([       // Total videos + total views for this channel
@@ -62,13 +62,13 @@ const getChannelStats = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(new ApiResponse(200, stats, "Channel stats fetched successfully"))
+        .json(new apiResponse(200, stats, "Channel stats fetched successfully"))
 })
 
 const getChannelVideos = asyncHandler(async (req, res) => {
     const channelId = req.user?._id
     if (!channelId) {
-        throw new ApiError(401, "User must be logged in to view channel videos")
+        throw new apiError(401, "User must be logged in to view channel videos")
     }
 
     const { page = 1, limit = 10 } = req.query
@@ -85,7 +85,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(
-            new ApiResponse(
+            new apiResponse(
                 200,
                 {
                     videos,

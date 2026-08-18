@@ -1,12 +1,13 @@
 import mongoose, { Schema } from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const commentSchema = new Schema(
     {
         content: {
             type : String,
-            lowerCase : true,
+            lowercase : true,
         },
-        videos: { 
+        video: { 
             type: Schema.Types.ObjectId,
             ref : "Video"
         },
@@ -20,6 +21,8 @@ const commentSchema = new Schema(
     }
 )
 
+
+commentSchema.plugin(mongooseAggregatePaginate);
 
 export const Comment = mongoose.model("Comment",commentSchema);
 // in mongodb it is saved as 'comments'

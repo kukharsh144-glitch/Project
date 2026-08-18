@@ -1,6 +1,7 @@
+import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { apiError } from "../utils/apiError.js"
-import { apiResponse } from "../utils/apiResponse.js"
+import { ApiResponse } from "../utils/apiResponse.js"
 import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { v2 as cloudinary } from "cloudinary";
@@ -45,7 +46,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     const { fullName, email, password, userName } = req.body;
 
-    if ([fullName, email, password, userName].some((field) => field.trim() === "")) {
+    if ([fullName, email, password, userName].some((field) => !field || typeof field !== "string" || field.trim() === "")) {
         throw new apiError(400, "All fields are required ")
     }
 
@@ -63,7 +64,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     if (!avatarLocalPath) {
-        throw new ApiError(400, "Avatar file is required")
+        throw new apiError(400, "Avatar file is required")
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
@@ -76,7 +77,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 
     if (!avatar) {
-        throw new ApiError(400, "Avatar file is required")
+        throw new apiError(400, "Avatar file is required")
     }
 
     const user = await User.create({
@@ -195,12 +196,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             secure: true,
         }
 
-        const { accessToken, newRefreshToken } = await generateAccessAndRefreshToken(user._id)
+        const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
         return res
             .status(200)
-            .cookie("accesToken", accessToken, options)
-            .cookie("refreshToken", newRefreshToken, options)
-            .json(new apiResponse(200, { accessToken, refreshToken: newRefreshToken }, "acceess tokeen refreshed "))
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(new apiResponse(200, { accessToken, refreshToken }, "acceess tokeen refreshed "))
     } catch (error) {
         throw new apiError(401, error?.message || " Invalid refresh token ")
     }
@@ -366,7 +367,7 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
     const {userName} = req.params
 
     if (!userName?.trim()) {
-        throw new ApiError(400, "userName is missing")
+        throw new apiError(400, "userName is missing")
     }
 
     const channel = await User.aggregate([
@@ -424,7 +425,7 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
     ])
 
     if (!channel?.length) {
-        throw new ApiError(404, "channel does not exists")
+        throw new apiError(404, "channel does not exists")
     }
 
     return res

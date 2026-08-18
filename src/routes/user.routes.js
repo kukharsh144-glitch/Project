@@ -6,7 +6,9 @@ import { registerUser,
     updateUserAvatar, 
     updateAccountDetails,
     getCurrentUser,
-    changeCurrentPassword,} from "../controllers/user.controller.js";
+    changeCurrentPassword,
+    getUserChannelProfile,
+    getWatchHistory,} from "../controllers/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js"
 import { verifyJWT } from "../middleware/auth.middleware.js";
 

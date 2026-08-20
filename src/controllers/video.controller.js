@@ -5,6 +5,7 @@ import { apiError } from "../utils/apiError.js"
 import { apiResponse } from "../utils/apiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { Like } from "../models/like.model.js"
 
 //TODO: get all videos based on query, sort, pagination
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -130,11 +131,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
         description,
         videoFile: {
             url: uploadedVideo.url,
-            publicId: uploadedVideo.publicId
+            publicId: uploadedVideo.public_id
         },
         thumbnail: {
             url: thumbnail.url,
-            publicId: thumbnail.publicId
+            publicId: thumbnail.public_id
         },
         duration,
         views: 0,
@@ -158,16 +159,49 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: get video by id
+    if (!isValidObjectId(videoId)) {
+        throw new apiError(400, "Invalid video ID")
+    }
 
     const video = await Video.findById(videoId).populate("owner", "userName fullName avatar")
     if (!video) {
         throw new apiError(404, "Video not found")
     }
 
-    await Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } }, { new: true })
+    // Increment views
+    await Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } }, { returnDocument: 'after' })
 
-    return res.status(200).json(new apiResponse(200, video, "Video fetched successfully"))
+    // Add to user watch history (move to top/end of history list)
+    if (req.user?._id) {
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $pull: { watchHistory: videoId }
+            }
+        )
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $push: { watchHistory: videoId }
+            }
+        )
+    }
+
+    // Fetch likes count, dislikes count, and whether this user liked/disliked it
+    const [likesCount, dislikesCount, userLike, userDislike] = await Promise.all([
+        Like.countDocuments({ video: videoId, isDislike: false }),
+        Like.countDocuments({ video: videoId, isDislike: true }),
+        Like.findOne({ video: videoId, likedBy: req.user?._id, isDislike: false }),
+        Like.findOne({ video: videoId, likedBy: req.user?._id, isDislike: true })
+    ])
+
+    const videoData = video.toObject()
+    videoData.likesCount = likesCount
+    videoData.dislikesCount = dislikesCount
+    videoData.isLiked = !!userLike
+    videoData.isDisliked = !!userDislike
+
+    return res.status(200).json(new apiResponse(200, videoData, "Video fetched successfully"))
 })
 
 const updateVideo = asyncHandler(async (req, res) => {
@@ -190,7 +224,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     if (title) updatedFields.title = title
     if (description) updatedFields.description = description
 
-    const updatedVideo = await Video.findByIdAndUpdate(videoId, updatedFields, { new: true })
+    const updatedVideo = await Video.findByIdAndUpdate(videoId, updatedFields, { returnDocument: 'after' })
 
     const oldThumbnail = video.thumbnail.publicId
 

@@ -16,11 +16,11 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         throw new apiError(401, "User must be logged in to like a video")
     }
 
-    // try to remove an existing like first — single atomic operation,
-    // avoids a separate findOne() + deleteOne() round trip
+    // try to remove an existing like first
     const existingLike = await Like.findOneAndDelete({
         video: videoId,
-        likedBy: userId
+        likedBy: userId,
+        isDislike: false
     })
 
     if (existingLike) {
@@ -29,12 +29,59 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
             .json(new apiResponse(200, { liked: false }, "Video unliked successfully"))
     }
 
-    // no existing like was found, so create one
-    const newLike = await Like.create({ video: videoId, likedBy: userId })
+    // remove existing dislike if present
+    await Like.findOneAndDelete({
+        video: videoId,
+        likedBy: userId,
+        isDislike: true
+    })
+
+    // create new like
+    const newLike = await Like.create({ video: videoId, likedBy: userId, isDislike: false })
 
     return res
         .status(201)
         .json(new apiResponse(201, { liked: true, like: newLike }, "Video liked successfully"))
+})
+
+const toggleVideoDislike = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+
+    if (!isValidObjectId(videoId)) {
+        throw new apiError(400, "Invalid videoId")
+    }
+    
+    const userId = req.user._id
+    if (!userId) {
+        throw new apiError(401, "User must be logged in to dislike a video")
+    }
+
+    // try to remove an existing dislike first
+    const existingDislike = await Like.findOneAndDelete({
+        video: videoId,
+        likedBy: userId,
+        isDislike: true
+    })
+
+    if (existingDislike) {
+        return res
+            .status(200)
+            .json(new apiResponse(200, { disliked: false }, "Video undisliked successfully"))
+    }
+
+    // remove existing like if present
+    await Like.findOneAndDelete({
+        video: videoId,
+        likedBy: userId,
+        isDislike: false
+    })
+
+    // create new dislike
+    const newDislike = await Like.create({ video: videoId, likedBy: userId, isDislike: true })
+
+    return res
+        .status(201)
+        .json(new apiResponse(201, { disliked: true, dislike: newDislike }, "Video disliked successfully"))
 })
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
@@ -120,7 +167,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                 select: "title thumbnail duration views createdAt owner",
                 populate: {
                     path: "owner",
-                    select: "userName email"
+                    select: "userName fullName avatar email"
                 }
             })
             .lean(),
@@ -148,5 +195,6 @@ export {
     toggleCommentLike,
     toggleTweetLike,
     toggleVideoLike,
+    toggleVideoDislike,
     getLikedVideos
 }

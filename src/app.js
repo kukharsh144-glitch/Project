@@ -37,6 +37,20 @@ app.use("/api/v1/subscriptions", subscriptionRouters);
 app.use("/api/v1/tweets", tweetRouters);
 app.use("/api/v1/videos", videoRouters);
 
+// Global error handling middleware to serialize all controller errors (e.g. 409 conflict, 400 bad request)
+app.use((err, req, res, next) => {
+    // Print the full error details to the server terminal console for real-time debugging
+    console.error("Express App Error:", err);
 
+    const statusCode = err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    
+    return res.status(statusCode).json({
+        statusCode,
+        success: false,
+        message,
+        errors: err.errors || []
+    });
+});
 
 export { app };

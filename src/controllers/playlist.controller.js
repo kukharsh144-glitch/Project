@@ -130,7 +130,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     const updatedPlaylist = await Playlist.findByIdAndUpdate(
         playlistId,
         { $addToSet: { videos: videoId } },
-        { new: true }
+        { returnDocument: 'after' }
     )
         .populate({
             path: "videos",
@@ -159,7 +159,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     const updatedPlaylist = await Playlist.findOneAndUpdate(
         { _id: playlistId, owner: req.user._id },
         { $pull: { videos: videoId } },
-        { new: true }
+        { returnDocument: 'after' }
     )
         .populate({
             path: "videos",
@@ -244,7 +244,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     const updatedPlaylist = await Playlist.findOneAndUpdate(
         { _id: playlistId, owner: req.user._id },
         { $set: updateFields },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
     ).lean()
 
     if (!updatedPlaylist) {

@@ -119,7 +119,7 @@ const updateComment = asyncHandler(async (req, res) => {
     const updatedComment = await Comment.findByIdAndUpdate(
         commentId,
         { content: content.trim() },
-        { new: true }
+        { returnDocument: 'after' }
     )
 
     return res

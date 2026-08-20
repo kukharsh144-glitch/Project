@@ -1,6 +1,7 @@
 import mongoose, { isValidObjectId } from "mongoose"
 import {Tweet} from "../models/tweet.model.js"
 import {User} from "../models/user.model.js"
+import {Like} from "../models/like.model.js"
 import {apiError} from "../utils/apiError.js"
 import {apiResponse} from "../utils/apiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
@@ -38,16 +39,30 @@ const getUserTweets = asyncHandler(async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limitNum)
-            .populate("owner", "userName email")
+            .populate("owner", "userName fullName avatar email")
             .lean(),
         Tweet.countDocuments({ owner: userId })
     ])
+
+    const tweetsWithLikes = await Promise.all(
+        tweets.map(async (tweet) => {
+            const [likesCount, userLike] = await Promise.all([
+                Like.countDocuments({ tweet: tweet._id }),
+                req.user?._id ? Like.findOne({ tweet: tweet._id, likedBy: req.user._id }) : null
+            ])
+            return {
+                ...tweet,
+                likesCount,
+                isLiked: !!userLike
+            }
+        })
+    )
 
     const totalPages = Math.ceil(totalTweets / limitNum)
 
     return res.status(200).json(
         new apiResponse(200, {
-            tweets,
+            tweets: tweetsWithLikes,
             pagination: {
                 currentPage: pageNum,
                 limit: limitNum,
@@ -57,6 +72,55 @@ const getUserTweets = asyncHandler(async (req, res) => {
                 hasPrevPage: pageNum > 1
             }
         }, "User tweets fetched successfully")
+    )
+})
+
+const getAllTweets = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10 } = req.query
+
+    const pageNum = Math.max(parseInt(page, 10), 1)
+    const limitNum = Math.max(parseInt(limit, 10), 1)
+    const skip = (pageNum - 1) * limitNum
+
+    const [tweets, totalTweets] = await Promise.all([
+        Tweet.find({})
+            .select("content owner createdAt updatedAt")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .populate("owner", "userName fullName avatar email")
+            .lean(),
+        Tweet.countDocuments({})
+    ])
+
+    const tweetsWithLikes = await Promise.all(
+        tweets.map(async (tweet) => {
+            const [likesCount, userLike] = await Promise.all([
+                Like.countDocuments({ tweet: tweet._id }),
+                req.user?._id ? Like.findOne({ tweet: tweet._id, likedBy: req.user._id }) : null
+            ])
+            return {
+                ...tweet,
+                likesCount,
+                isLiked: !!userLike
+            }
+        })
+    )
+
+    const totalPages = Math.ceil(totalTweets / limitNum)
+
+    return res.status(200).json(
+        new apiResponse(200, {
+            tweets: tweetsWithLikes,
+            pagination: {
+                currentPage: pageNum,
+                limit: limitNum,
+                totalTweets,
+                totalPages,
+                hasNextPage: pageNum < totalPages,
+                hasPrevPage: pageNum > 1
+            }
+        }, "All tweets fetched successfully")
     )
 })
 
@@ -83,7 +147,7 @@ const updateTweet = asyncHandler(async (req, res) => {
         const updatedTweet = await Tweet.findByIdAndUpdate(
             tweetId,
             { content },
-            { new: true }
+            { returnDocument: 'after' }
         )
         return res
         .status(200)
@@ -116,5 +180,6 @@ export {
     createTweet,
     getUserTweets,
     updateTweet,
-    deleteTweet
+    deleteTweet,
+    getAllTweets
 }

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { apiError } from "../utils/apiError.js"
-import { ApiResponse } from "../utils/apiResponse.js"
+import { apiResponse, ApiResponse } from "../utils/apiResponse.js"
 import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { v2 as cloudinary } from "cloudinary";
@@ -139,7 +139,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: true,
+        secure: false, // Disable secure flag for local development HTTP cookie persistence
     }
 
     return res
@@ -158,12 +158,12 @@ const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         { $unset: { refreshToken: 1 } },  // this remove the field from the document 
-        { new: true }
+        { returnDocument: 'after' }
     )
 
     const options = {
         httpOnly: true,
-        secure: true,
+        secure: false,
     }  // this make that the any change in that will done by the server not applicable from the frontend 
 
     return res
@@ -193,7 +193,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         const options = {
             httpOnly: true,
-            secure: true,
+            secure: false,
         }
 
         const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
@@ -254,7 +254,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     const updateUser = await User.findByIdAndUpdate(
         req.user?._id,
         { $set: { fullName : fullName || user.fullName, email : email || user?.email } },
-        { new: true },
+        { returnDocument: 'after' },
     ).select("-password")
 
     return res
@@ -293,7 +293,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
                 "public_id.avatarPublicId": avatar.public_id
             }
         },
-        { new: true },
+        { returnDocument: 'after' },
     ).select("-password")
 
     // i got this ( we get the public_id of the old image we can remove it from the cloudinary)
@@ -342,7 +342,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
                 "public_id.coverImagePublicId": coverImage.public_id
             }
         },
-        { new: true },
+        { returnDocument: 'after' },
     ).select("-password")
 
     // i got this ( we get the public_id of the old image we can remove it from the cloudinary)

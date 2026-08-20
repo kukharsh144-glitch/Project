@@ -53,11 +53,36 @@ const getChannelStats = asyncHandler(async (req, res) => {
         }
     ])
 
+    // Aggregated views grouped by creation date for the last 7 days to show real calendar views performance
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const viewsPerformance = await Video.aggregate([
+        {
+            $match: {
+                owner: new mongoose.Types.ObjectId(channelId),
+                createdAt: { $gte: sevenDaysAgo }
+            }
+        },
+        {
+            $group: {
+                _id: {
+                    $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                },
+                views: { $sum: "$views" }
+            }
+        },
+        {
+            $sort: { _id: 1 }
+        }
+    ]);
+
     const stats = {
         totalVideos: videoStats[0]?.totalVideos || 0,
         totalViews: videoStats[0]?.totalViews || 0,
         totalSubscribers,
-        totalLikes: likeStats[0]?.totalLikes || 0
+        totalLikes: likeStats[0]?.totalLikes || 0,
+        viewsPerformance
     }
 
     return res

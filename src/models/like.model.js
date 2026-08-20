@@ -17,6 +17,10 @@ const likeSchema = new Schema(
         tweet : {
             type : Schema.Types.ObjectId,
             ref :  "Tweet",
+        },
+        isDislike: {
+            type: Boolean,
+            default: false
         }
     },
     {
